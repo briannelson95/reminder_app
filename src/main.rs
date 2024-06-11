@@ -1,14 +1,37 @@
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
+use clap::{Arg, Command};
 use notify_rust::Notification;
 use std::{thread, time::Duration};
 
 fn main() {
-    // Prompt the user for the reminder message and time
-    let reminder_message = prompt("Enter the reminder message:");
-    let reminder_time_str = prompt("Enter the reminder time (YYYY-MM-DD HH:MM:SS):");
+    // Parse command-line arguments
+    let matches = Command::new("Reminder App")
+        .version("1.0")
+        .author("Your Name <your.email@example.com>")
+        .about("Sends a notification at a specified time")
+        .arg(
+            Arg::new("message")
+                .short('m')
+                .long("message")
+                .value_name("MESSAGE")
+                .help("The reminder message")
+                .required(true),
+        )
+        .arg(
+            Arg::new("time")
+                .short('t')
+                .long("time")
+                .value_name("TIME")
+                .help("The reminder time (YYYY-MM-DD HH:MM:SS)")
+                .required(true),
+        )
+        .get_matches();
+
+    let reminder_message = matches.get_one::<String>("message").unwrap();
+    let reminder_time_str = matches.get_one::<String>("time").unwrap();
 
     // Parse the reminder time
-    let reminder_time = match NaiveDateTime::parse_from_str(&reminder_time_str, "%Y-%m-%d %H:%M:%S") {
+    let reminder_time = match NaiveDateTime::parse_from_str(reminder_time_str, "%Y-%m-%d %H:%M:%S") {
         Ok(parsed_time) => parsed_time,
         Err(_) => {
             eprintln!("Failed to parse the reminder time. Please use the format YYYY-MM-DD HH:MM:SS");
@@ -22,7 +45,7 @@ fn main() {
     // Calculate the duration to wait
     let now = Local::now();
     let duration_to_wait = reminder_time - now;
-    
+
     if duration_to_wait.num_seconds() <= 0 {
         eprintln!("The specified time is in the past.");
         return;
@@ -36,18 +59,7 @@ fn main() {
     // Send the notification
     Notification::new()
         .summary("Reminder")
-        .body(&reminder_message)
+        .body(reminder_message)
         .show()
         .unwrap();
-}
-
-fn prompt(message: &str) -> String {
-    use std::io::{self, Write};
-
-    print!("{} ", message);
-    io::stdout().flush().unwrap();
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input).expect("Failed to read line");
-    input.trim().to_string()
 }
